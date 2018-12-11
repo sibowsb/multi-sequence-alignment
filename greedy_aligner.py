@@ -1,12 +1,63 @@
 import numpy as np
 
 
-default_delta = lambda x, y: 1 if x == y else -1
+def default_delta_func(x, y):
+    """
+    Default delta function. If there two characters are the same, 
+    give a score of 1; otherwise (including the case of a gap), give
+    a a score of -1.
+
+    Alternative delta functions should be defined similarly.
+    
+    Attributes
+    ----------
+    x, y : char
+        The characters in the alphabet (including `-` for a gap).
+    
+    Returns
+    -------
+    float
+        The delta score.
+    
+    """
+    if x == y:
+        return 1.0
+    else:
+        return -1.0
 
 
-def align_global(v1, v2, delta=None, minimize=False):
-    if delta is None:
-        delta = default_delta
+def align_global(v1, v2, delta=default_delta_func, minimize=False):
+    """
+    Apply global sequence-to-sequence alignment using the Needleman–
+    Wunsch algorithm.
+    
+    Parameters
+    ----------
+    v1, v2 : str
+        The two input sequences.
+    delta : function, optional
+        The character-to-character score function. The default value 
+        is ``default_delta_func``.
+    minimize : bool, optional
+        If True, the aligner will minimize, instead of maximize, the 
+        final score. It should be set to True for the classical edit 
+        distance problem. The default value is False.
+
+    Returns
+    -------
+    str
+        The aligned sequence ``v1``, with gaps denoted by ``-``.
+    str
+        The aligned sequence ``v2``, with gaps denoted by ``-``.
+    float
+        The final alignment score.
+
+    Example
+    -------
+        >>> align_global('ACTTGAC', 'ACGTGC')
+        ('ACTTGAC', 'ACGT-GC', 3.0)
+    
+    """
     score_mat = np.zeros((len(v1) + 1, len(v2) + 1))
     case_mat = np.zeros_like(score_mat, dtype='uint8')
     selector = np.argmin if minimize else np.argmax
@@ -52,12 +103,65 @@ def align_global(v1, v2, delta=None, minimize=False):
         v1_padded = v1_padded + ['-'] * (final_len - len(v1_padded))
     if len(v2_padded) < final_len:
         v2_padded = v2_padded + ['-'] * (final_len - len(v2_padded))
+    
     return ''.join(v1_padded), ''.join(v2_padded), score_mat[-1, -1]
     
 
 
 class Profile:
-    def __init__(self, strings, labels=None, alphabet=None, delta=None):
+    """
+    A multisequence profile representing the frequencies of character 
+    appearances at each position.
+
+    Attributes
+    ----------
+    alphabet : list
+        A list of allowed characters, including the gap character.
+    profile : ndarray
+        The 2-dimensional profile table.
+
+    Methods
+    -------
+    add_profile(profile, labels=None)
+        Add a profile to the current Profile object and perform 
+        alignment.
+    add_str(v, label=None)
+        Add a sequence to the current Profile object and perform
+        alignment.
+    copy()
+        Return a copy of the current Profile object.
+    
+    """
+    def __init__(self, strings, labels=None, alphabet=None, 
+                 delta=default_delta_func):
+        """
+        Initialize a profile.
+        
+        Parameters
+        ----------
+        strings : list
+            A list of strings each denoting a sequence. They must have
+            identical lengths.
+        labels : list, optional
+            The string labels of the sequences. If not specified, 
+            labels of the format ``v<x>`` will be assigned where
+            ``<x>`` is an integer.
+        alphabet : list, optional
+            A list of allowed characters, including the gap character.
+            If not specified, it is assumed that all characters are 
+            covered in the input sequences.
+        delta : function, optional
+            The character-to-character score function. The default value 
+            is ``default_delta_func``.
+
+        Example
+        -------
+        >>> profile = Profile(['ACTTGAC', 'ACGTGCC', 'ACGGCAC'],
+        ...                   labels=['seq1', 'seq2', 'seq3'],
+        ...                   alphabet=['A', 'C', 'T', 'G', '-'])
+        <__main__.Profile at 0x7ff8dbec3898>
+
+        """
         assert len(strings) > 0
         for s in strings:
             assert len(s) == len(strings[0])
@@ -69,7 +173,7 @@ class Profile:
         else:
             assert len(labels) == len(strings)
         self._string_labels = labels
-        self._delta = default_delta if delta is None else delta
+        self._delta = delta
         self._strings = np.array([list(s) for s in strings])
         self.profile = self._build_profile_from_strings(self._strings)
     
@@ -98,6 +202,9 @@ class Profile:
         return res
 
     def _build_profile_from_strings(self, strings):
+        """
+        Build profile table from a list of strings of equal lengths.
+        """
         profile = np.zeros((len(self.alphabet), strings.shape[1]))
         for j in range(strings.shape[1]):
             chars = list(strings[:, j])
@@ -106,12 +213,20 @@ class Profile:
         return profile
 
     def _tau(self, x, j):
+        """
+        Calculate the :math:`\tau` score of character ``x`` and column 
+        ``j``.
+        """
         res = 0
         for i, y in enumerate(self.alphabet):
             res += self.profile[i, j] * self._delta(x, y)
         return res
     
     def _sigma(self, i, q, j):
+        """
+        Calculate the :math:`\sigma` score between the ith column of
+        the current profile and the jth column of the profile ``q``.
+        """
         res = 0
         for ix, x in enumerate(self.alphabet):
             for iy, y in enumerate(q.alphabet):
@@ -120,6 +235,24 @@ class Profile:
         return res
      
     def add_str(self, v, label=None):
+        """
+        Add a sequence to the current Profile object and perform
+        alignment.
+
+        Parameters
+        ----------
+        v : str
+            The new sequence to add.
+        label : str, optional
+            The label of the new sequence. If not specified, ``v<x>``
+            will be used where ``<x>`` is an integer.
+
+        Returns
+        -------
+        float
+            The alignment score.
+
+        """
         score_mat = np.zeros((len(v) + 1, self.profile.shape[1] + 1))
         case_mat = np.zeros_like(score_mat, dtype='uint8')
         
@@ -170,6 +303,25 @@ class Profile:
         return score_mat[-1, -1]
 
     def add_profile(self, profile, labels=None):
+        """
+        Add a profile to the current Profile object and perform 
+        alignment.
+
+        Parameters
+        ----------
+        profile : object:Profile
+            The profile to add to the current profile.
+        label : list, optional
+            The labels of sequences in the new profile. If not 
+            specified, ``v<x>`` will be used where ``<x>`` is an 
+            integer.
+
+        Returns
+        -------
+        float
+            The alignment score.
+
+        """
         score_mat = np.zeros((self.profile.shape[1] + 1, 
                               profile.profile.shape[1] + 1))
         case_mat = np.zeros_like(score_mat, dtype='uint8')
@@ -223,13 +375,3 @@ class Profile:
 
         return score_mat[-1, -1]
 
-
-if __name__ == '__main__':
-    profile1 = Profile(['GTCTGA', 'GTCAGC'])
-    # print(profile.add_str('GATATT'))
-    # print(profile.add_str('GATTCA'))
-    profile2 = Profile(['GATTCA', 'GATATT'])
-    print(profile1)
-    print(profile2)
-    print(profile1.add_profile(profile2))
-    print(profile1)
