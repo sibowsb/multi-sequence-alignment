@@ -1,7 +1,6 @@
 import unittest
 from greedy_aligner import *
 
-
 class TestSeq2Seq(unittest.TestCase):
     def test_simple(self):
         seqs = ['ACTTGAC', 'ACGTGC']
@@ -20,23 +19,30 @@ class TestSeq2Seq(unittest.TestCase):
 class TestProfile(unittest.TestCase):
     def test_init(self):
         p = Profile(['GTCTGA', 'GTCAGC'])
-        print(p)
+        #print(p)
 
     def test_profile_to_seq(self):
         p = Profile(['GTCTGA', 'GTCAGC'])
         score = p.add_str('GATTCA')
-        print(p)
+        #print(p)
         expected_score = -1.0
         self.assertEqual(score, expected_score)
 
     def test_profile_to_profile(self):
         p1 = Profile(['GTCTGA', 'GTCAGC'])
         p2 = Profile(['GA-TTCA', 'GATAT-T'])    # try different lengths
+        print(p1)
+        print(p2)
         score = p1.add_profile(p2)
         print(p1)
         expected_score = -1.5
         self.assertEqual(score, expected_score)
-        
+
+class TestMultiAlign(unittest.TestCase):
+    def test_multi_align(self):
+        seqs = ['ACTGCATA', 'AACTTTAA', 'ACAAAT', 'TCAAA', 'ACCGGATAA']
+        p = multi_align(seqs)
+        print(p)
 
 if __name__ == '__main__':
     unittest.main()
