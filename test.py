@@ -19,12 +19,12 @@ class TestSeq2Seq(unittest.TestCase):
 class TestProfile(unittest.TestCase):
     def test_init(self):
         p = Profile(['GTCTGA', 'GTCAGC'])
-        #print(p)
+        print(p)
 
     def test_profile_to_seq(self):
         p = Profile(['GTCTGA', 'GTCAGC'])
         score = p.add_str('GATTCA')
-        #print(p)
+        print(p)
         expected_score = -1.0
         self.assertEqual(score, expected_score)
 
