@@ -257,3 +257,6 @@ tags
 [._]*.un~
 
 # End of https://www.gitignore.io/api/git,vim,linux,python,pycharm,jupyternotebook
+
+# Implementation from https://github.com/niemasd/SeqAlign to benchmark with
+SeqAlign

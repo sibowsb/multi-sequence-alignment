@@ -325,6 +325,8 @@ class Profile:
         score_mat = np.zeros((self.profile.shape[1] + 1, 
                               profile.profile.shape[1] + 1))
         case_mat = np.zeros_like(score_mat, dtype='uint8')
+        my_num_cols = self.profile.shape[1]
+        its_num_cols = profile.profile.shape[1]
 
         # Table filling
         for i in range(1, score_mat.shape[0]):
@@ -340,10 +342,15 @@ class Profile:
                 case_mat[i, j] = argmax + 1
         
         # Backtrace
-        i, j = profile.profile.shape[0], profile.profile.shape[1]
+        i, j = self.profile.shape[1], profile.profile.shape[1]
         path = []
-        while i != 0 and j != 0:
-            case = case_mat[i, j]
+        while i != 0 or j != 0:
+            if i == 0:      # add more gaps to the other profile
+                case = 2
+            elif j == 0:    # add more gaps to myself
+                case = 1
+            else:
+                case = case_mat[i, j]
             path.append((i, j, case))
             if case == 1:   # from top (add gap to myself)
                 i -= 1
@@ -357,15 +364,19 @@ class Profile:
         # Update profile
         my_strings = self._strings
         its_strings = profile._strings
-        for i, j, case in path:
-            ii, jj = i - 1, j - 1
-            if case == 1:   # add gap to myself at location ii
-                my_strings = np.insert(my_strings, ii, '-', axis=1)
-            elif case == 2: # add gap to the other profile at location jj
-                its_strings = np.insert(its_strings, jj, '-', axis=1)
-        strings = np.concatenate([my_strings, its_strings])
-        self._strings = strings
-        self.profile = self._build_profile_from_strings(strings)
+        m, n = my_strings.shape[0], its_strings.shape[0]
+        final_strings = np.empty((m + n, len(path)), dtype='<U1')
+        final_strings[:, :] = '-'
+        for c, (i, j, case) in enumerate(path):
+            if case == 1:
+                final_strings[:m, c] = my_strings[:, i - 1]
+            elif case == 2:
+                final_strings[m:, c] = its_strings[:,  j - 1]
+            elif case == 3:
+                final_strings[:m, c] = my_strings[:, i - 1]
+                final_strings[m:, c] = its_strings[:,  j - 1]
+        self._strings = final_strings
+        self.profile = self._build_profile_from_strings(final_strings)
         if labels is None:
             labels = ['v%d' % (len(self._string_labels) + 1 + i)
                         for i in range(its_strings.shape[0])]
@@ -374,4 +385,24 @@ class Profile:
         self._string_labels += labels
 
         return score_mat[-1, -1]
+
+
+def multi_align(sequences, labels=None, 
+                delta=default_delta_func, alphabet='ATCG-'):
+    if labels is None:
+        labels = ['v%d' % (i + 1) for i in range(len(sequences))]
+    profiles = [Profile([seq], labels=[label], alphabet=alphabet, delta=delta)
+                    for seq, label in zip(sequences, labels)]
+    while len(profiles) > 1:
+        new_profiles = []
+        for i in range(0, len(profiles), 2):
+            # handle the last one of an odd number of profiles
+            if i + 1 == len(profiles):
+                new_profiles[-1].add_profile(profiles[i])
+            else:
+                p1, p2 = profiles[i : i+2]
+                p1.add_profile(p2)
+                new_profiles.append(p1)
+        profiles = new_profiles
+    return profiles[0]
 
