@@ -31,7 +31,7 @@ The randomly generated input sequences are:
 ```
 
 Now, let's use `multi_align` to perform alignment.
-```
+```Python
 from greedy_aligner import multi_align
 p = multi_align(input_seqs.values())
 print(p)
