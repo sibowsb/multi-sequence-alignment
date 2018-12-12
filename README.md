@@ -28,7 +28,6 @@ print(input_seqs)
 The randomly generated input sequences are:
 ```
 {'v0': 'GACAATCCTG', 'v1': 'GACATCCTA', 'v2': 'GATGATCCTA', 'v3': 'GACCATCCTA', 'v4': 'GACCATCCTA'}
-
 ```
 
 Now, let's use `multi_align` to perform alignment.
