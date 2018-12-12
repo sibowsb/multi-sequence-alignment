@@ -389,6 +389,40 @@ class Profile:
 
 def multi_align(sequences, labels=None, 
                 delta=default_delta_func, alphabet='ATCG-'):
+    """
+    Align multiple sequences by recursively merging profiles.
+
+    Parameters
+    ----------
+    sequences : list
+        List of sequence strings.
+    labels : list, optional
+        List of string labels for the sequences. If not specified, 
+        ``v<x>`` will be used where ``<x>`` is an integer.
+    delta : function, optional
+        The character-to-character score function. The default value 
+        is ``default_delta_func``.
+    alphabet : list, optional
+        A list of allowed characters, including the gap character.
+        If not specified, it is assumed that all characters are 
+        covered in the input sequences.
+    
+    Returns
+    -------
+    object:Profile
+        The aligned Profile object.
+
+    Example
+    -------
+    >>> p = multi_align(['TTGAGCGATT',
+    ...                  'TTGATGAGT',
+    ...                  'TTGAGTTT',
+    ...                  'TTGAGTGAGT',
+    ...                  'TTGAGTGAGT'])
+    >>> print(p)
+    <__main__.Profile at 0x7fdbac9d4400>
+
+    """
     if labels is None:
         labels = ['v%d' % (i + 1) for i in range(len(sequences))]
     profiles = [Profile([seq], labels=[label], alphabet=alphabet, delta=delta)
